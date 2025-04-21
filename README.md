@@ -1,1 +1,1 @@
-# STAR_PROTOCOL_Code
+# Protocol for deciphering tumor prognosis and heterogeneity by transcriptome using machine learning
