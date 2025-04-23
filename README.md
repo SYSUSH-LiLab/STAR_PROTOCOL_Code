@@ -12,6 +12,10 @@ In this study, we utilized aging as a biological criterion to identify high-risk
 * step3.R: Establish a subtype-specific regulatory network and perform master regulatory analysis.
 * step4.R: Prioritize therapeutic candidates with drug sensitivity analysis.
 
-
+## Data used in the protocol
+* Datasets/TCGA-STAD.rda: Processed TCGA-STAD gene expression profiles, clinical information, and aging-associated genes.
+* Datasets/GSE62254.rda: Processed gene expression profiles and clinical information of validation dataset GSE62254.
+* Datasets/TF_EMT_signature.rda: An R list contains human transcription factors and epithelial-to-mesenchymal transition (EMT) siganture genes.
+* Datasets/CTRP_GC.rda: Processing gene expression profiles, drug activity score profiles of human cell lines, and drug information.
 
 
