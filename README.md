@@ -3,7 +3,7 @@
 ## Summary
 Identifying high-risk patients and dissecting tumor heterogeneity are critical for the advancement of individualized cancer therapeutics. Thus, leveraging specific biological or clinical parameters, such as age, is essential for developing clinical indicators that guide therapy and stratify patients into distinct subgroups. This approach further enables the prioritization of key druggable targets for those subgroups exhibiting the most aggressive biological behavior.   
 
-For complete details on the use and execution of this protocol, please refer to the primary reference paper:
+For complete details on the use and execution of this protocol, please refer to the primary reference paper:   
 Li, J., Yang, C., Zhang, Y., Hong, X., Jiang, M., Zhu, Z., & Li, J. (2025). [Deciphering aging-associated prognosis and heterogeneity in gastric cancer through a machine learning-driven approach](https://doi.org/10.1016/j.isci.2025.112316). iScience, 28(5), 112316.
 
 
