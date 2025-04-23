@@ -3,7 +3,6 @@ best.cluster <- NbClust::NbClust(
   data = t(gc.expr[train.gene,]), method = 'kmeans',
   min.nc = 2, max.nc = 5
 )
-factoextra::fviz_nbclust(best.cluster)
 
 gc.cc.fit <- ConsensusClusterPlus::ConsensusClusterPlus(
   d = as.matrix(gc.expr[train.gene,]), maxK = 5, clusterAlg = 'km',
