@@ -29,6 +29,18 @@ lasso.gene <- lapply(1:100, function(x){
 }) %>% do.call(cbind, .) %>% magrittr::set_rownames(train.gene) %>% rowSums()
 final.gene <- names(lasso.gene)[lasso.gene > 85]
 
+lasso.gene %>% as.data.frame() %>% rownames_to_column('term') %>%
+  magrittr::set_colnames(c('term','freq')) %>% filter(freq > 0) %>% 
+  left_join(age.os.cox[,c('term','estimate','p.value')]) %>% 
+  dplyr::mutate(HR = ifelse(estimate > 1, 'Risk', 'Protective'), estimate=round(estimate, 1)) %>% 
+  ggdotchart(x = "term", y = "freq", color='HR', dot.size = 8,
+           sorting = "descending", add = "segments", palette = 'Dark1',                      
+           ggtheme = theme_pubr(),label = 'estimate',
+           font.label = list(color = "white", size = 9, 
+                             vjust = 0.5),
+)+geom_hline(yintercept=85, linetype='dashed', color='#FC4E07')+
+  labs(x='', y='Occurance', color='Hazard ratio')
+
 ## ====== 4 Aging-associated Index (AAI) =============
 asi.expr <- gc.expr[final.gene,] %>% t() %>% as.data.frame() %>% bind_cols(gc.subtype[,c('OS.time','OS')])
 asi.fit <- coxph(Surv(OS.time, OS) ~ ., data = asi.expr)
@@ -46,8 +58,8 @@ survfit(Surv(OS.time, OS) ~ ASI.HL, data=gc.subtype) %>%
     pval = TRUE,conf.int = F,
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='OS (%)',
-    legend.title = '',legend.lab=c('ASI-H', 'ASI-L'),
-    ggtheme = theme_classic2(),
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(), palette = c('#FC4E07','#E7B800'), title = 'TCGA-STAD',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
 
@@ -56,8 +68,8 @@ survfit(Surv(DFI.time, DFI) ~ ASI.HL, data=gc.subtype) %>%
     pval = TRUE,conf.int = F,
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='DFS (%)',
-    legend.title = '',legend.lab=c('ASI-H', 'ASI-L'),
-    ggtheme = theme_classic2(),
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(),palette = c('#FC4E07','#E7B800'), title = 'TCGA-STAD',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
 
@@ -76,8 +88,8 @@ survfit(Surv(OS.m, Death) ~ ASI.HL, data=GSE62254.subtype) %>%
     pval = TRUE,conf.int = F,
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='OS (%)',
-    legend.title = '',legend.lab=c('ASI-H', 'ASI-L'),
-    ggtheme = theme_classic2(),
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(),palette = c('#FC4E07','#E7B800'), title = 'GSE62254',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
 
@@ -86,8 +98,8 @@ survfit(Surv(DFS.m, Recur) ~ ASI.HL, data=GSE62254.subtype) %>%
     pval = TRUE,conf.int = F,
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='DFS (%)',
-    legend.title = '',legend.lab=c('ASI-H', 'ASI-L'),
-    ggtheme = theme_classic2(),
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(), palette = c('#FC4E07','#E7B800'), title = 'GSE62254',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
 
