@@ -37,16 +37,29 @@ for(i in 1:nrow(drug.gene.df)){
 }
 rm(i,df)
 
-lapply(genes, function(x){
-  df<-drug.gene.df[drug.gene.df$gene == x,] %>% left_join(drug.info[,c('ID','CLINICAL.STATUS')],by=c('drug'='ID'))
-  ggplot(df,aes(x=auc,y=-log10(anova.p)))+geom_point(aes(color=I(ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05, 'red','lightgrey'))))+
-    theme_classic()+labs(x='AUC',y='ANOVA -log10 (P)',title=x)+
-    geom_hline(yintercept = -log10(0.05),lty='dashed',color='lightgrey')+
-    geom_vline(xintercept = c(0.25,0.75),lty='dashed',color='lightgrey')+
-    ggrepel::geom_label_repel(aes(label=ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05, drug,'')),label.size = NA,max.overlaps=Inf)+
-    theme(
-      legend.position = 'none',
-      axis.text= element_text(size=15,family ="sans"),
-      axis.title= element_text(size = 15,family ="sans")
-    )
-}) %>% cowplot::plot_grid(plotlist = ., ncol=2)
+
+drug.gene.df[drug.gene.df$gene == 'ELK3',] %>% left_join(drug.info[,c('ID','CLINICAL.STATUS')],by=c('drug'='ID')) %>% 
+  ggplot(aes(x=auc,y=-log10(anova.p)))+
+  geom_point(aes(color=I(ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05 & CLINICAL.STATUS =='FDA approved', 'red','lightgrey'))))+
+  theme_classic()+labs(x='AUC',y='ANOVA -log10 (P)',title='ELK3')+
+  geom_hline(yintercept = -log10(0.05),lty='dashed',color='lightgrey')+
+  geom_vline(xintercept = c(0.25,0.75),lty='dashed',color='lightgrey')+
+  ggrepel::geom_label_repel(aes(label=ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05 & CLINICAL.STATUS =='FDA approved', drug,'')),label.size = NA,max.overlaps=Inf)+
+  theme(
+    legend.position = 'none',
+    axis.text= element_text(size=15,family ="sans"),
+    axis.title= element_text(size = 15,family ="sans")
+  )
+
+drug.gene.df[drug.gene.df$gene == 'SOX7',] %>% left_join(drug.info[,c('ID','CLINICAL.STATUS')],by=c('drug'='ID')) %>% 
+  ggplot(aes(x=auc,y=-log10(anova.p)))+
+  geom_point(aes(color=I(ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05, 'red','lightgrey'))))+
+  theme_classic()+labs(x='AUC',y='ANOVA -log10 (P)',title='SOX7')+
+  geom_hline(yintercept = -log10(0.05),lty='dashed',color='lightgrey')+
+  geom_vline(xintercept = c(0.25,0.75),lty='dashed',color='lightgrey')+
+  ggrepel::geom_label_repel(aes(label=ifelse((auc >= 0.75 | auc <= 0.25) & anova.p < 0.05, drug,'')),label.size = NA,max.overlaps=Inf)+
+  theme(
+    legend.position = 'none',
+    axis.text= element_text(size=15,family ="sans"),
+    axis.title= element_text(size = 15,family ="sans")
+  )
