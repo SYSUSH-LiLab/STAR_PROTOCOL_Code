@@ -4,6 +4,11 @@ best.cluster <- NbClust::NbClust(
   min.nc = 2, max.nc = 5
 )
 
+best_nc <- as.data.frame(t(best.cluster$Best.nc), stringsAsFactors = TRUE)
+table(best_nc$Number_clusters) %>% as.data.frame() %>% filter(Var1 != 0) %>% 
+  ggbarplot(x='Var1', y='Freq', fill='darkgrey', color='darkgrey')+
+  labs(x='Number of clusters', y='Frequency among all indices') + ggtitle('Optimal number of clusters')
+
 gc.cc.fit <- ConsensusClusterPlus::ConsensusClusterPlus(
   d = as.matrix(gc.expr[train.gene,]), maxK = 5, clusterAlg = 'km',
   plot='pdf'
@@ -23,7 +28,7 @@ survfit(Surv(OS.time, OS) ~ Consensus.subtype, data=gc.subtype) %>%
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='OS (%)', palette = c('#609EA2','#C27664'),
     legend.title = '',legend.lab=paste0('Cluster',1:2),
-    ggtheme = theme_classic2(),
+    ggtheme = theme_classic2(), title = 'TCGA-STAD',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
 
@@ -32,7 +37,7 @@ survfit(Surv(DFI.time, DFI) ~ Consensus.subtype, data=gc.subtype) %>%
     pval = TRUE,conf.int = F,
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='DFS (%)',
-    legend.title = '',legend.lab=paste0('Cluster',1:2),
+    legend.title = '',legend.lab=paste0('Cluster',1:2),title = 'TCGA-STAD',
     ggtheme = theme_classic2(), palette = c('#609EA2','#C27664'),
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
   )
@@ -56,7 +61,7 @@ survfit(Surv(OS.m, Death) ~ Consensus.subtype, data=GSE62254.subtype) %>%
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='OS (%)',
     legend.title = '',legend.lab=paste0('Cluster',1:2),
-    ggtheme = theme_classic2(),
+    ggtheme = theme_classic2(), title = 'GSE62254',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12,palette = c('#609EA2','#C27664')
   )
 
@@ -66,6 +71,6 @@ survfit(Surv(DFS.m, Recur) ~ Consensus.subtype, data=GSE62254.subtype) %>%
     risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
     xlab='Follow up (months)', ylab='DFS (%)',
     legend.title = '',legend.lab=paste0('Cluster',1:2),
-    ggtheme = theme_classic2(),
+    ggtheme = theme_classic2(),title = 'GSE62254',
     font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12,palette = c('#609EA2','#C27664')
   )
