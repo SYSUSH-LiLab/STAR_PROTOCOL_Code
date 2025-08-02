@@ -1,0 +1,123 @@
+## ========= 1. Load the required libraries ==============
+library(tidyverse) ### A collection of R packages for data manipulation and visualization
+library(ggplot2) ### For creating elegant graphics
+library(survival) ### For survival analysis and Cox models
+library(broom) ### For tidying statistical model outputs
+library(survminer) ### For enhanced survival plots
+library(randomForest) ### For random forest modeling
+library(RTN) ### For regulatory network inference
+library(glmnet) ### For LASSO and Elastic-Net regularized models
+
+## ======= 2. Aging-associated gene with LASSO ================
+load("Datasets/TCGA-STAD.rda") ### Load training dataset including gene expression and survival metadata
+
+### ==== 1. Load the gene expression and subtype data (overall survival information) ====
+### Extract the expression matrix for aging-associated genes, transpose it,
+### convert it to data.frame, and merge with clinical subtype/survival info
+tmp <- gc.expr[aging.gene$Symbol,] %>% t() %>% as.data.frame() %>% bind_cols(gc.subtype)
+
+### ==== 2. Perform the univariate Cox regression analysis for aging-associated genes ====
+age.os.cox <- lapply(aging.gene$Symbol, function(x){
+  formu <- sprintf("coxph(Surv(OS.time, OS) ~ %s, data = tmp)", x) ### Build Cox formula for each gene
+  res <- eval(parse(text = formu)) %>% tidy(exponentiate = T) ### Fit model and extract HR/p-value
+}) %>% do.call(rbind, .) ### Combine results into one dataframe
+
+### ==== 3. Filter the genes with P < 0.1 ====
+train.gene <- age.os.cox$term[age.os.cox$p.value < 0.1]
+### Select genes with nominal prognostic significance for downstream LASSO
+
+## ==== 3. LASSO to select most important genes ========
+lasso.gene <- lapply(1:100, function(x){
+  ### Perform LASSO Cox regression with 5-fold CV
+  fit <- cv.glmnet(gc.expr[train.gene,] %>% t(), 
+                           as.matrix(Surv(gc.subtype$OS.time,gc.subtype$OS)),
+                           family = "cox", alpha=1, nfolds = 5)
+  efs <- coef(fit, s=fit$lambda.min) %>% as.matrix() ### Extract coefficients at optimal lambda
+  gene.lasso <- rownames(efs)[efs[,1] != 0] ### Get names of genes with non-zero coefficients
+  return(train.gene %in% gene.lasso) ### Return logical vector indicating selected genes
+}) %>% do.call(cbind, .) %>% magrittr::set_rownames(train.gene) %>% rowSums() ### Repeat 100 times; count how many times each gene was selected
+### Retain genes selected in at least 85 out of 100 iterations
+final.gene <- names(lasso.gene)[lasso.gene > 85] 
+
+### Plot the selection frequency of genes with hazard ratio info over 100 LASSO runs
+lasso.gene %>% as.data.frame() %>% rownames_to_column('term') %>%
+  magrittr::set_colnames(c('term','freq')) %>% filter(freq > 0) %>% 
+  left_join(age.os.cox[,c('term','estimate','p.value')]) %>% 
+  dplyr::mutate(HR = ifelse(estimate > 1, 'Risk', 'Protective'), estimate=round(estimate, 1)) %>% 
+  ggdotchart(x = "term", y = "freq", color='HR', dot.size = 8,
+           sorting = "descending", add = "segments", palette = 'Dark1',                      
+           ggtheme = theme_pubr(),label = 'estimate',
+           font.label = list(color = "white", size = 9, 
+                             vjust = 0.5))+
+  geom_hline(yintercept=85, linetype='dashed', color='#FC4E07')+
+  labs(x='', y='Occurance', color='Hazard ratio')
+
+## ====== 4 Aging-associated Index (AAI) =============
+asi.expr <- gc.expr[final.gene,] %>% t() %>% as.data.frame() %>% bind_cols(gc.subtype[,c('OS.time','OS')])
+asi.fit <- coxph(Surv(OS.time, OS) ~ ., data = asi.expr)
+gc.subtype$asi.score <- sapply(gc.expr[final.gene,], function(x){
+  sum(x * coef(asi.fit)) %>% return()
+}) ### Compute AAI risk score by linear combination of expression and coefficients
+
+### ==== Perform the survival analysis for risk score ====
+coxph(Surv(OS.time, OS) ~ asi.score, data = gc.subtype) %>% broom::tidy(exponentiate = T)
+coxph(Surv(DFI.time, DFI) ~ asi.score, data = gc.subtype) %>% broom::tidy(exponentiate = T)
+
+### ==== Stratify the patients into high and low groups ====
+gc.subtype$ASI.HL <- ifelse(gc.subtype$asi.score > median(gc.subtype$asi.score), 
+                            'ASI-H', 'ASI-L')
+
+### ==== Perform the survival analysis (log-rank test) for high and low groups ====
+survfit(Surv(OS.time, OS) ~ ASI.HL, data=gc.subtype) %>%
+  ggsurvplot(
+    pval = TRUE,conf.int = F,
+    risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
+    xlab='Follow up (months)', ylab='OS (%)',
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(), palette = c('#FC4E07','#E7B800'), title = 'TCGA-STAD',
+    font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
+  )
+
+survfit(Surv(DFI.time, DFI) ~ ASI.HL, data=gc.subtype) %>%
+  ggsurvplot(
+    pval = TRUE,conf.int = F,
+    risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
+    xlab='Follow up (months)', ylab='DFS (%)',
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(),palette = c('#FC4E07','#E7B800'), title = 'TCGA-STAD',
+    font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
+  )
+
+## ====== 5. AAI validation =============
+load("Datasets/GSE62254.rda")
+identical(colnames(GSE62254.expr), GSE62254.subtype$GEO_ID) ### Confirm sample alignment between expression and subtype tables
+
+### ==== Apply the trained risk score on validation dataset ==========
+GSE62254.subtype$asi.score <- sapply(GSE62254.expr[names(asi.fit$coefficients),], function(x){
+  sum(x * coef(asi.fit))
+}) ### Apply trained AAI model to validation dataset using the same coefficients
+
+coxph(Surv(OS.m, Death) ~ asi.score, data = GSE62254.subtype) %>% broom::tidy(exponentiate = T)
+coxph(Surv(DFS.m, Recur) ~ asi.score, data = GSE62254.subtype) %>% broom::tidy(exponentiate = T)
+
+GSE62254.subtype$ASI.HL <- ifelse(GSE62254.subtype$asi.score > median(GSE62254.subtype$asi.score), 'ASI-H','ASI-L')
+survfit(Surv(OS.m, Death) ~ ASI.HL, data=GSE62254.subtype) %>%
+  ggsurvplot(
+    pval = TRUE,conf.int = F,
+    risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
+    xlab='Follow up (months)', ylab='OS (%)',
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(),palette = c('#FC4E07','#E7B800'), title = 'GSE62254',
+    font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
+  ) ### Plot OS Kaplan-Meier curves for validation dataset by AAI group
+
+survfit(Surv(DFS.m, Recur) ~ ASI.HL, data=GSE62254.subtype) %>%
+  ggsurvplot(
+    pval = TRUE,conf.int = F,
+    risk.table = T,risk.table.col = "strata",size=1,pval.size=8,
+    xlab='Follow up (months)', ylab='DFS (%)',
+    legend.title = '',legend.lab=c('AAI-H', 'AAI-L'),
+    ggtheme = theme_classic2(), palette = c('#FC4E07','#E7B800'), title = 'GSE62254',
+    font.x = 15,font.y=15,font.main=18,font.legend=15,font.tickslab=12
+  ) ### Plot DFS Kaplan-Meier curves for validation dataset by AAI group
+
